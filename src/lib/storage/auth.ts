@@ -1,7 +1,5 @@
 /**
  * Google OAuth access token storage.
- *
- * 기존 익명 사용자 ID(`coollink_user_id`)와 분리해 로그인 세션만 관리한다.
  */
 export const ACCESS_TOKEN_STORAGE_KEY = "accessToken";
 

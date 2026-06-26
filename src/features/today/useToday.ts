@@ -11,6 +11,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, isApiError } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { isUserProfileComplete } from "@/lib/auth/profileCompletion";
 import type {
   DailyPlan,
   GenerateDailyPlanBody,
@@ -38,6 +40,13 @@ export type TodayProgress = {
 };
 
 const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION ?? "서울";
+
+function isProfileRequiredError(error: unknown): boolean {
+  return (
+    isApiError(error) &&
+    (error.code === "PROFILE_NOT_FOUND" || error.code === "profile_required")
+  );
+}
 
 function progressFromSummary(s: SavingsSummary): TodayProgress {
   return {
@@ -105,6 +114,7 @@ function generateBody(location: LocationState | null, date: string): GenerateDai
 
 export function useToday() {
   const router = useRouter();
+  const auth = useAuth();
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [summary, setSummary] = useState<SavingsSummary | null>(null);
@@ -130,6 +140,12 @@ export function useToday() {
   };
 
   useEffect(() => {
+    if (auth.status === "checking") return;
+    if (auth.status === "authenticated" && !isUserProfileComplete(auth.user)) {
+      router.replace("/onboarding");
+      return;
+    }
+
     const controller = new AbortController();
     let active = true;
     const date = getTodayKst();
@@ -139,7 +155,7 @@ export function useToday() {
       try {
         return await api.getDailyPlan({ date }, controller.signal);
       } catch (error) {
-        if (isApiError(error) && error.code === "PROFILE_NOT_FOUND") {
+        if (isProfileRequiredError(error)) {
           router.replace("/onboarding");
           return null;
         }
@@ -148,7 +164,19 @@ export function useToday() {
           (error.code === "RECOMMENDATION_NOT_FOUND" || error.status === 404);
         if (!missing) throw error;
         // 플랜 없음 → 생성 (명세서 §10.7)
-        return api.generateDailyPlan(generateBody(location, date), controller.signal);
+        try {
+          return await api.generateDailyPlan(
+            generateBody(location, date),
+            controller.signal,
+          );
+        } catch (generateError) {
+          // 프로필이 없으면(아직 온보딩 전) 온보딩으로 보낸다.
+          if (isProfileRequiredError(generateError)) {
+            router.replace("/onboarding");
+            return null;
+          }
+          throw generateError;
+        }
       }
     };
 
@@ -203,7 +231,7 @@ export function useToday() {
       active = false;
       controller.abort();
     };
-  }, [attempt, router]);
+  }, [attempt, auth.status, auth.user, router]);
 
   const retry = useCallback(() => {
     setStatus("loading");

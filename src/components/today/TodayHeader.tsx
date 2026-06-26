@@ -7,11 +7,13 @@ export function TodayHeader({
   dateLabel,
   regionName,
   onRefresh,
+  onLogout,
   refreshing = false,
 }: {
   dateLabel: string;
   regionName: string;
   onRefresh?: () => void;
+  onLogout?: () => void;
   refreshing?: boolean;
 }) {
   return (
@@ -24,30 +26,41 @@ export function TodayHeader({
           {regionName} 기준
         </p>
       </div>
-      {onRefresh ? (
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          aria-label="새로고침"
-          className="shrink-0 rounded-full border border-border p-2 text-neutral disabled:opacity-50"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-            className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+      <div className="flex shrink-0 items-center gap-2">
+        {onLogout ? (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-neutral transition-colors hover:text-primary"
           >
-            <path
-              d="M20 11a8 8 0 1 0-.6 4M20 5v6h-6"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      ) : null}
+            로그아웃
+          </button>
+        ) : null}
+        {onRefresh ? (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-label="새로고침"
+            className="rounded-full border border-border p-2 text-neutral disabled:opacity-50"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+              className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+            >
+              <path
+                d="M20 11a8 8 0 1 0-.6 4M20 5v6h-6"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        ) : null}
+      </div>
     </header>
   );
 }

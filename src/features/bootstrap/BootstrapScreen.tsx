@@ -5,12 +5,13 @@
  *
  * - 중앙: CoolLink AI 로고 + 소개 문구 + 핵심 가치
  * - 로그인 전: Google 회원가입/로그인 버튼
- * - 로그인 후: 계정 카드 + "오늘의 절약 루틴 시작하기" 버튼
- * - 로딩: "오늘의 절약 루틴을 준비하고 있어요" + 스피너
- * - 실패: 재시도 버튼
+ * - 로그인 후: 계정 카드 + "오늘의 절약 루틴 시작하기" 버튼 → /today(홈)로 이동
+ * - 세션 확인 중: 스피너
  */
-import { useBootstrap } from "@/hooks/useBootstrap";
+import { useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { getAccessToken } from "@/lib/storage/auth";
 import type { AuthenticatedUser } from "@/types/api";
 
 function Logo() {
@@ -86,7 +87,13 @@ function GoogleIcon() {
   );
 }
 
-function AccountCard({ user }: { user: AuthenticatedUser }) {
+function AccountCard({
+  user,
+  onLogout,
+}: {
+  user: AuthenticatedUser;
+  onLogout: () => void;
+}) {
   const image = getProfileImage(user);
   const name = getDisplayName(user);
 
@@ -104,7 +111,7 @@ function AccountCard({ user }: { user: AuthenticatedUser }) {
           {name.slice(0, 1)}
         </span>
       )}
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold text-foreground">
           안녕하세요, {name}님
         </span>
@@ -114,13 +121,42 @@ function AccountCard({ user }: { user: AuthenticatedUser }) {
           </span>
         ) : null}
       </span>
+      <button
+        type="button"
+        onClick={onLogout}
+        className="shrink-0 rounded-full border border-primary/30 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary-soft"
+      >
+        로그아웃
+      </button>
     </section>
   );
 }
 
 export function BootstrapScreen() {
-  const { status, start } = useBootstrap();
+  const router = useRouter();
   const auth = useAuth();
+  const { status: authStatus, checkSession } = auth;
+
+  // 로그인 후 홈(오늘의 루틴) 화면으로 이동.
+  // (프로필이 아직 없으면 /today에서 온보딩으로 안내된다.)
+  const handleStart = useCallback(() => {
+    console.log("start routine clicked");
+    router.push("/today");
+  }, [router]);
+
+  const handleLogout = useCallback(() => {
+    console.log("logout clicked");
+    auth.logout();
+    // 스플래시에 머무르며 로그인 전 상태(Google 버튼)로 자동 전환된다.
+  }, [auth]);
+
+  // 콜백에서 토큰 저장 후 / 로 client-nav되면 AuthProvider가 자동 재검증하지 않는다.
+  // 토큰이 있는데 미인증 상태면 세션을 다시 확인해 로그인 직후 계정 카드가 보이게 한다.
+  useEffect(() => {
+    if (authStatus === "unauthenticated" && getAccessToken()) {
+      checkSession();
+    }
+  }, [authStatus, checkSession]);
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -169,7 +205,7 @@ export function BootstrapScreen() {
           </ul>
 
           {auth.isAuthenticated && auth.user ? (
-            <AccountCard user={auth.user} />
+            <AccountCard user={auth.user} onLogout={handleLogout} />
           ) : null}
         </div>
 
@@ -187,40 +223,11 @@ export function BootstrapScreen() {
               />
               <p className="text-sm text-neutral">로그인 상태 확인 중...</p>
             </div>
-          ) : status === "error" ? (
-            <div role="alert" className="flex flex-col items-center gap-3">
-              <p className="text-center text-sm leading-6 text-neutral">
-                앱을 시작하지 못했어요.
-                <br />
-                잠시 후 다시 시도해주세요.
-              </p>
-              <button
-                type="button"
-                onClick={start}
-                className="w-full rounded-full bg-primary py-4 text-sm font-semibold text-white shadow-md shadow-primary/20 transition-colors hover:opacity-90"
-              >
-                다시 시도
-              </button>
-            </div>
-          ) : status === "loading" ? (
-            <div
-              role="status"
-              aria-live="polite"
-              className="flex flex-col items-center gap-3 py-2"
-            >
-              <span
-                aria-hidden
-                className="h-7 w-7 animate-spin rounded-full border-2 border-primary/25 border-t-primary"
-              />
-              <p className="text-sm text-neutral">
-                오늘의 절약 루틴을 준비하고 있어요
-              </p>
-            </div>
           ) : auth.isAuthenticated ? (
             <>
               <button
                 type="button"
-                onClick={start}
+                onClick={handleStart}
                 className="w-full rounded-full bg-primary py-4 text-base font-bold text-white shadow-md shadow-primary/25 transition-colors hover:opacity-90 active:scale-[0.99]"
               >
                 오늘의 절약 루틴 시작하기

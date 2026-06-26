@@ -43,3 +43,7 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 화면 캡처/PDF 산출물 (npm run capture:pdf)
+/screenshots/
+/artifacts/

@@ -8,7 +8,6 @@
  * - 프로필 저장 여부는 localStorage 플래그로 보관(부트스트랩 분기용)
  */
 import type {
-  AnonymousUser,
   AuthenticatedUser,
   CalculationEstimateResponse,
   DailyPlan,
@@ -23,6 +22,7 @@ import type {
   SavingsCalendarResponse,
   SavingsSummary,
   ToggleActionResponse,
+  UserProfileUpdateBody,
 } from "@/types/api";
 import {
   AC_TYPES,
@@ -49,6 +49,7 @@ export const MOCK_ENABLED = process.env.NEXT_PUBLIC_ENABLE_MOCK === "true";
 
 const MOCK_USER_ID = "mock-user-0001";
 const MOCK_PROFILE_FLAG = "coollink_mock_profile";
+let mockUserOverrides: Partial<AuthenticatedUser> = {};
 
 function delay<T>(value: T, ms = 280): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
@@ -72,6 +73,25 @@ function setMockProfileSaved(): void {
   } catch {
     /* 무시 */
   }
+}
+
+function buildMockAuthenticatedUser(): AuthenticatedUser {
+  const profileSaved = isMockProfileSaved();
+  return {
+    id: MOCK_USER_ID,
+    user_id: MOCK_USER_ID,
+    name: mockUserOverrides.name ?? "혜성",
+    email: "hyesung@gmail.com",
+    profileImage: undefined,
+    has_profile: profileSaved,
+    profileCompleted: profileSaved,
+    region: mockUserOverrides.region ?? (profileSaved ? "서울" : null),
+    householdSize: mockUserOverrides.householdSize ?? null,
+    residenceType:
+      mockUserOverrides.residenceType ?? (profileSaved ? "원룸" : null),
+    mainCoolingDevice:
+      mockUserOverrides.mainCoolingDevice ?? (profileSaved ? "벽걸이" : null),
+  };
 }
 
 /* ── 행동 완료 상태 (메모리) ──────────────────────────── */
@@ -451,18 +471,17 @@ export async function mockRequest<T>(
     return as<MetaAssumptions>(MOCK_ASSUMPTIONS);
 
   // users
-  if (path.endsWith("/users/anonymous") && method === "POST")
-    return as<AnonymousUser>({ user_id: MOCK_USER_ID });
   if (path.endsWith("/users/me"))
     return as<Me>({ user_id: MOCK_USER_ID, has_profile: isMockProfileSaved() });
+  if (path.endsWith("/user/me") && method === "PATCH") {
+    mockUserOverrides = {
+      ...mockUserOverrides,
+      ...(body as UserProfileUpdateBody),
+    };
+    return as<AuthenticatedUser>(buildMockAuthenticatedUser());
+  }
   if (path.endsWith("/user/me"))
-    return as<AuthenticatedUser>({
-      id: "google-user-0001",
-      name: "혜성",
-      email: "hyesung@gmail.com",
-      profileImage: undefined,
-      has_profile: isMockProfileSaved(),
-    });
+    return as<AuthenticatedUser>(buildMockAuthenticatedUser());
 
   // profile
   if (path.endsWith("/profile") && method === "PUT") {

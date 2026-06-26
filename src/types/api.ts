@@ -39,6 +39,7 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 export type ApiErrorCode =
   | "USER_NOT_FOUND"
   | "PROFILE_NOT_FOUND"
+  | "profile_required"
   | "INVALID_PROFILE_INPUT"
   | "WEATHER_FETCH_FAILED"
   | "WEATHER_CACHE_MISS"
@@ -131,17 +132,8 @@ export type ProfilePayload = {
 export type Profile = ProfilePayload;
 
 /* ──────────────────────────────────────────────────────────
- * 4. 사용자 (명세서 §6, §8)
+ * 4. 사용자 / 인증
  * ────────────────────────────────────────────────────────── */
-
-export type CreateAnonymousUserBody = {
-  client_timezone: string;
-};
-
-export type AnonymousUser = {
-  user_id: string;
-  created_at?: string;
-};
 
 export type Me = {
   user_id: string;
@@ -159,6 +151,23 @@ export type AuthenticatedUser = {
   picture_url?: string | null;
   avatar_url?: string | null;
   has_profile?: boolean;
+  profileCompleted?: boolean;
+  profile_completed?: boolean;
+  region?: string | null;
+  householdSize?: number | null;
+  household_size?: number | null;
+  residenceType?: string | null;
+  residence_type?: string | null;
+  mainCoolingDevice?: string | null;
+  main_cooling_device?: string | null;
+};
+
+export type UserProfileUpdateBody = {
+  name?: string | null;
+  region?: string | null;
+  householdSize?: number | null;
+  residenceType?: string | null;
+  mainCoolingDevice?: string | null;
 };
 
 /* ──────────────────────────────────────────────────────────

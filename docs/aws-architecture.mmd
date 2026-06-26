@@ -1,0 +1,12 @@
+flowchart LR
+    User["User Browser"] --> FE["Next.js Frontend<br/>EC2 Docker or Amplify"]
+    FE --> API["FastAPI Backend<br/>EC2 Docker"]
+
+    API --> RDS[("RDS PostgreSQL<br/>profiles, plans, actions, summaries, AI logs")]
+    API --> Bedrock["AWS Bedrock<br/>lifestyle analysis, recommendation copy"]
+    API --> Weather["OpenWeatherMap<br/>forecast 5day/3h"]
+    API --> S3[("S3<br/>monthly reports, PDFs, artifacts")]
+    API --> CW["CloudWatch Logs<br/>API/AI/job logs"]
+
+    EventBridge["EventBridge<br/>6 AM KST schedule"] --> InternalJob["Internal Job API<br/>generate daily recommendations"]
+    InternalJob --> API

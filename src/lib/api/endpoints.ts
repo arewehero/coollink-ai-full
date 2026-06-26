@@ -7,11 +7,9 @@
 import { http, requestRaw } from "./client";
 import type {
   AnalysisScoresResponse,
-  AnonymousUser,
   AuthenticatedUser,
   CalculationEstimateBody,
   CalculationEstimateResponse,
-  CreateAnonymousUserBody,
   DailyPlan,
   DailyPlanQuery,
   EnergyProfile,
@@ -34,6 +32,7 @@ import type {
   SavingsSummaryQuery,
   ToggleActionBody,
   ToggleActionResponse,
+  UserProfileUpdateBody,
 } from "@/types/api";
 
 /** /api/v1 접두어 */
@@ -63,15 +62,7 @@ export function getAssumptions(signal?: AbortSignal): Promise<MetaAssumptions> {
   return http.get<MetaAssumptions>(`${V1}/meta/assumptions`, undefined, signal);
 }
 
-/* ── Users (명세서 §6, §8) ─────────────────────────────── */
-
-/** POST /api/v1/users/anonymous — 익명 사용자 생성 */
-export function createAnonymousUser(
-  body: CreateAnonymousUserBody,
-  signal?: AbortSignal,
-): Promise<AnonymousUser> {
-  return http.post<AnonymousUser>(`${V1}/users/anonymous`, body, signal);
-}
+/* ── Users/Auth ───────────────────────────────────────── */
 
 /** GET /api/v1/users/me — 내 사용자 조회 */
 export function getMe(signal?: AbortSignal): Promise<Me> {
@@ -83,6 +74,14 @@ export function getAuthenticatedMe(
   signal?: AbortSignal,
 ): Promise<AuthenticatedUser> {
   return http.get<AuthenticatedUser>(`${V1}/user/me`, undefined, signal);
+}
+
+/** PATCH /api/v1/user/me — Google 로그인 사용자 필수 정보 저장/수정 */
+export function updateAuthenticatedMe(
+  body: UserProfileUpdateBody,
+  signal?: AbortSignal,
+): Promise<AuthenticatedUser> {
+  return http.patch<AuthenticatedUser>(`${V1}/user/me`, body, signal);
 }
 
 /** GET /api/v1/auth/google/login — Google OAuth 시작 URL */
@@ -258,16 +257,15 @@ export function estimateCalculation(
 
 /**
  * 모든 엔드포인트를 모은 네임스페이스.
- * 명세서 §6.2, §22의 `api.createAnonymousUser`, `api.getDailyPlan`,
- * `api.toggleAction` 등 호출 형태와 일치한다.
+ * 화면/훅에서는 `api.getDailyPlan`, `api.toggleAction` 등으로 호출한다.
  */
 export const api = {
   getHealth,
   getEnums,
   getAssumptions,
-  createAnonymousUser,
   getMe,
   getAuthenticatedMe,
+  updateAuthenticatedMe,
   getGoogleOAuthLoginUrl,
   saveProfile,
   getProfile,

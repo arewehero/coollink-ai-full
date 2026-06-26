@@ -14,6 +14,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, isApiError } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import type {
   ApiErrorCode,
   GenerateDailyPlanBody,
@@ -110,6 +111,7 @@ function buildErrorInfo(code: ApiErrorCode | undefined, isNetwork: boolean): Err
 
 export function LocationFlow() {
   const router = useRouter();
+  const auth = useAuth();
   const [phase, setPhase] = useState<Phase>("choose");
   const [region, setRegion] = useState<string>(DEFAULT_REGION);
   const [gpsDeniedHint, setGpsDeniedHint] = useState(false);
@@ -131,11 +133,20 @@ export function LocationFlow() {
     }
 
     try {
+      if (location.type === "region") {
+        const nextUser = await api.updateAuthenticatedMe({
+          region: location.region_name,
+        });
+        auth.setUser(nextUser);
+      }
       await api.generateDailyPlan(body);
       router.replace("/today");
     } catch (error) {
       // 프로필이 없으면(이론상 발생 X) 온보딩으로 되돌린다 (명세서 §14.1)
-      if (isApiError(error) && error.code === "PROFILE_NOT_FOUND") {
+      if (
+        isApiError(error) &&
+        (error.code === "PROFILE_NOT_FOUND" || error.code === "profile_required")
+      ) {
         router.replace("/onboarding");
         return;
       }

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
+import { clearAccessToken } from "@/lib/storage/auth";
 import { clearStoredUserId } from "@/lib/storage/user";
 import { clearStoredLocation } from "@/lib/storage/location";
 import { clearOnboardingDraft } from "@/lib/storage/onboardingDraft";
@@ -43,6 +44,7 @@ const MENU = [
 ];
 
 function resetAllData() {
+  clearAccessToken();
   clearStoredUserId();
   clearStoredLocation();
   clearOnboardingDraft();
@@ -101,7 +103,7 @@ export function SettingsHome() {
       <ConfirmModal
         open={confirmOpen}
         title="데이터를 초기화할까요?"
-        message="이 기기에서 저장한 사용자 ID가 삭제돼요. 기존 절약 기록을 다시 불러올 수 없을 수 있습니다."
+        message="이 기기의 로그인 세션과 프로필 임시 저장값이 삭제돼요. 뽑기권과 컬렉션은 유지됩니다."
         confirmLabel="초기화"
         danger
         onConfirm={handleReset}

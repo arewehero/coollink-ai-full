@@ -10,6 +10,7 @@ import { useToday } from "./useToday";
 import { getTodayLabelKst } from "@/lib/format/date";
 import { TodayHeader } from "@/components/today/TodayHeader";
 import { DailySavingSummaryCard } from "@/components/today/DailySavingSummaryCard";
+import { CarbonRewardCard } from "@/components/today/CarbonRewardCard";
 import { WeatherSummaryCard } from "@/components/today/WeatherSummaryCard";
 import { LifestyleAnalysisCard } from "@/components/today/LifestyleAnalysisCard";
 import { ProgressCard } from "@/components/today/ProgressCard";
@@ -17,15 +18,30 @@ import { ActionTimeline } from "@/components/today/ActionTimeline";
 import { AssumptionNotice } from "@/components/today/AssumptionNotice";
 import { SkeletonCard } from "@/components/common/SkeletonCard";
 import { ErrorView } from "@/components/common/ErrorView";
+import { sumCompletedCo2 } from "@/lib/carbon/carbonProgress";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export function TodayScreen() {
   const today = useToday();
+  const auth = useAuth();
+  const router = useRouter();
   const dateLabel = getTodayLabelKst();
+
+  const handleLogout = () => {
+    console.log("logout clicked");
+    auth.logout();
+    router.replace("/");
+  };
 
   if (today.status === "loading") {
     return (
       <>
-        <TodayHeader dateLabel={dateLabel} regionName={today.regionName} />
+        <TodayHeader
+          dateLabel={dateLabel}
+          regionName={today.regionName}
+          onLogout={handleLogout}
+        />
         <div className="flex flex-col gap-4 px-5 py-6">
           <SkeletonCard rows={3} />
           <SkeletonCard rows={2} />
@@ -38,7 +54,11 @@ export function TodayScreen() {
   if (today.status === "error" || !today.plan) {
     return (
       <>
-        <TodayHeader dateLabel={dateLabel} regionName={today.regionName} />
+        <TodayHeader
+          dateLabel={dateLabel}
+          regionName={today.regionName}
+          onLogout={handleLogout}
+        />
         <ErrorView
           title="오늘의 루틴을 불러오지 못했어요."
           message="잠시 후 다시 시도해주세요."
@@ -50,6 +70,9 @@ export function TodayScreen() {
   }
 
   const plan = today.plan;
+  // 오늘 완료한 체크리스트 항목들의 CO₂ 합 → 뽑기권 진행 카드의 기준값.
+  // (낙관적 업데이트된 plan.actions를 쓰므로 완료 즉시 카드가 갱신된다.)
+  const todayCompletedCo2Kg = sumCompletedCo2(plan.actions);
 
   return (
     <>
@@ -57,6 +80,7 @@ export function TodayScreen() {
         dateLabel={dateLabel}
         regionName={today.regionName}
         onRefresh={today.retry}
+        onLogout={handleLogout}
       />
       <div className="flex flex-col gap-4 px-5 py-6">
         {plan.status === "fallback" ? (
@@ -73,6 +97,7 @@ export function TodayScreen() {
           </div>
         ) : null}
         <DailySavingSummaryCard summary={plan.daily_summary} />
+        <CarbonRewardCard todayCompletedCo2Kg={todayCompletedCo2Kg} />
         <WeatherSummaryCard status={today.weatherStatus} weather={today.weather} />
 
         {/* 요금 시뮬레이터 진입 — 날씨와 AI 분석 사이, 강조 스타일로 잘 보이게 */}

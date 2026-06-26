@@ -8,9 +8,9 @@
  * - 프로필 저장 API(PUT /profile)는 마지막 "완료" 버튼에서만 호출
  * - 저장 성공 시 위치 설정(/location)으로 이동 (명세서 §4.2)
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import type { DefaultValues, FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api, isApiError } from "@/lib/api";
@@ -21,6 +21,9 @@ import {
 } from "@/lib/storage/onboardingDraft";
 import {
   profileSchema,
+  energyProfileSchema,
+  homeEnvironmentSchema,
+  lifestyleSchema,
   STEP_ERROR_MESSAGES,
   STEP_FIELD_GROUPS,
   type ProfileSchemaInput,
@@ -75,6 +78,7 @@ export function OnboardingFlow() {
   const [stepError, setStepError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const watchedValues = useWatch({ control: form.control });
 
   // draft 복원 + 변경 시 자동 저장
   // form.watch 대신 subscribe API 사용 (React Compiler 호환)
@@ -89,6 +93,17 @@ export function OnboardingFlow() {
   }, [form]);
 
   const isLast = step === STEPS.length - 1;
+  const currentStepComplete = useMemo(() => {
+    if (step === 0) {
+      return homeEnvironmentSchema.safeParse(
+        watchedValues.home_environment,
+      ).success;
+    }
+    if (step === 1) {
+      return lifestyleSchema.safeParse(watchedValues.lifestyle).success;
+    }
+    return energyProfileSchema.safeParse(watchedValues.energy_profile).success;
+  }, [step, watchedValues]);
 
   const handleNext = async () => {
     setStepError(null);
@@ -105,6 +120,10 @@ export function OnboardingFlow() {
   const handlePrev = () => {
     setStepError(null);
     setStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleExitToSplash = () => {
+    router.replace("/");
   };
 
   const handleSubmit = form.handleSubmit(
@@ -144,6 +163,8 @@ export function OnboardingFlow() {
       canGoPrev={step > 0}
       isLast={isLast}
       nextLabel={isLast ? "오늘의 절약 루틴 만들기" : "다음"}
+      nextDisabled={!currentStepComplete}
+      onExitToSplash={handleExitToSplash}
       onPrev={handlePrev}
       onNext={isLast ? handleSubmit : handleNext}
     >

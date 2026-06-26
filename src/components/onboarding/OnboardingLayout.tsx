@@ -22,6 +22,8 @@ export function OnboardingLayout({
   canGoPrev,
   isLast,
   nextLabel,
+  nextDisabled = false,
+  onExitToSplash,
   onPrev,
   onNext,
 }: {
@@ -36,12 +38,27 @@ export function OnboardingLayout({
   canGoPrev: boolean;
   isLast: boolean;
   nextLabel: string;
+  nextDisabled?: boolean;
+  onExitToSplash?: () => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex flex-col gap-4 border-b border-border bg-surface px-5 py-5">
+        {onExitToSplash ? (
+          <button
+            type="button"
+            onClick={onExitToSplash}
+            aria-label="스플래시 화면으로 돌아가기"
+            className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-neutral transition-colors hover:border-primary/30 hover:bg-primary-soft hover:text-primary"
+          >
+            <span aria-hidden className="text-base leading-none">
+              ←
+            </span>
+            <span>처음으로</span>
+          </button>
+        ) : null}
         <OnboardingStepper step={step} total={total} />
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold text-foreground">{title}</h1>
@@ -74,7 +91,7 @@ export function OnboardingLayout({
           <button
             type="button"
             onClick={onNext}
-            disabled={submitting}
+            disabled={submitting || nextDisabled}
             aria-busy={submitting}
             className="flex-1 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
           >

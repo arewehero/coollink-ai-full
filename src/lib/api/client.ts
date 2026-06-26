@@ -2,7 +2,8 @@
  * API client (명세서 §6.3, §7.3)
  *
  * - NEXT_PUBLIC_API_BASE_URL 기준으로 요청한다.
- * - 모든 요청에 X-User-Id 헤더를 포함한다(있을 때).
+ * - 로그인 토큰이 있으면 Authorization 헤더를 포함한다.
+ * - 기존 백엔드 API 호환을 위해 실제 계정 id를 X-User-Id 헤더로도 포함한다(있을 때).
  * - 공통 응답(success/data/error/meta)을 처리하고 success 시 data만 반환한다.
  * - 실패 시 ApiError로 정규화해 throw 한다.
  */
