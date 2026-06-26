@@ -69,6 +69,11 @@ def get_assumptions(request: Request) -> ApiSuccessResponse[Dict[str, Any]]:
             "24°C": 1.08,
             "23°C 이하": 1.17,
         },
+        "cooling_bill_share": calc.COOLING_BILL_SHARE,
+        "max_cooling_reduction_rate": calc.MAX_COOLING_REDUCTION_RATE,
+        "max_monthly_saving_rate_of_bill": round(
+            calc.COOLING_BILL_SHARE * calc.MAX_COOLING_REDUCTION_RATE, 3
+        ),
         "notes": [
             "전력량(kWh) = 소비전력(W) × 온도계수 × 사용시간(h) ÷ 1000",
             "절약액(원) = 절약 전력량(kWh) × 전기요금 단가(원/kWh)",
@@ -76,6 +81,12 @@ def get_assumptions(request: Request) -> ApiSuccessResponse[Dict[str, Any]]:
             "소비전력을 입력하지 않으면 평형 기준 추정값(없으면 1200W)을 사용합니다.",
             "전기요금 단가를 입력하지 않으면 150원/kWh를 적용합니다.",
             "설정온도 미입력 시 26°C를 기준으로 계산합니다.",
+            (
+                "냉방은 여름철 전기요금의 약 45%를 차지하고, 행동 변화만으로는 그 냉방요금의 "
+                "최대 30%까지 줄일 수 있다고 가정합니다. 따라서 추천 행동을 모두 실천해도 한 달 "
+                "절감액은 청구액의 약 13.5%를 넘지 않도록 제한합니다."
+            ),
+            "하루·한 달 절감 예측은 실제 청구액에 맞춰 상한이 적용되어 요금을 초과하지 않습니다.",
         ],
     }
     return ApiSuccessResponse(data=data, meta=api_meta_from_request(request))

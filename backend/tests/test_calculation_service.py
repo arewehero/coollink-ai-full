@@ -11,7 +11,11 @@ from app.services.calculation_service import (
     calculate_co2_reduction,
     calculate_energy_kwh,
     calculate_saving_krw,
+    cap_monthly_saving_krw,
     estimate_ac_power_watt,
+    estimate_daily_bill_krw,
+    max_daily_behavioral_saving_krw,
+    realistic_monthly_saving_ceiling_krw,
     temperature_coefficient,
     validate_calculation_inputs,
 )
@@ -238,3 +242,51 @@ class TestValidateCalculationInputs:
     def test_none_values_skip_validation(self):
         # Should not raise when all None
         validate_calculation_inputs()
+
+
+# ---------------------------------------------------------------------------
+# Bill-anchored realistic saving bounds
+# ---------------------------------------------------------------------------
+
+
+class TestRealisticSavingBounds:
+    """절감액이 실제 청구액에 비해 비현실적으로 커지지 않도록 제한하는 헬퍼."""
+
+    def test_estimate_daily_bill(self):
+        assert estimate_daily_bill_krw(30000) == 1000.0
+        assert estimate_daily_bill_krw(50000) == pytest.approx(1666.6667, rel=1e-4)
+
+    def test_estimate_daily_bill_missing_or_zero(self):
+        assert estimate_daily_bill_krw(None) == 0.0
+        assert estimate_daily_bill_krw(0) == 0.0
+        assert estimate_daily_bill_krw(-100) == 0.0
+
+    def test_realistic_monthly_ceiling(self):
+        # 청구액 × 0.45 × 0.30
+        assert realistic_monthly_saving_ceiling_krw(30000) == 4050  # 30000 × 0.135
+        assert realistic_monthly_saving_ceiling_krw(50000) == 6750  # 50000 × 0.135
+
+    def test_realistic_monthly_ceiling_missing(self):
+        assert realistic_monthly_saving_ceiling_krw(None) == 0
+        assert realistic_monthly_saving_ceiling_krw(0) == 0
+
+    def test_max_daily_behavioral_saving(self):
+        # 월 상한 4050 / 30일 = 135원
+        assert max_daily_behavioral_saving_krw(30000) == pytest.approx(135.0)
+        assert max_daily_behavioral_saving_krw(None) == 0.0
+
+    def test_cap_caps_unrealistic_projection(self):
+        # 사용자 사례: 3만원 청구액인데 예전 모델이 46,000원 절감 예측 → 4,050원으로 캡
+        assert cap_monthly_saving_krw(46000, 30000) == 4050
+
+    def test_cap_keeps_value_below_ceiling(self):
+        assert cap_monthly_saving_krw(3000, 30000) == 3000
+
+    def test_cap_without_bill_returns_value(self):
+        # 청구액 정보가 없으면 음수만 0으로 보정하고 그대로 반환
+        assert cap_monthly_saving_krw(46000, None) == 46000
+        assert cap_monthly_saving_krw(-5, None) == 0
+
+    def test_cap_never_exceeds_bill(self):
+        # 어떤 입력에도 청구액 기반 상한을 넘지 않는다
+        assert cap_monthly_saving_krw(999999, 30000) == 4050

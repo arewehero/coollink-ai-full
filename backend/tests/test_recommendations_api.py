@@ -763,7 +763,14 @@ def test_savings_summary_goal_on_track(
     sample_profile: Dict[str, Any],
     user_id: uuid.UUID,
 ) -> None:
-    client = make_client(fake_db, sample_profile, fake_recommendation_repository, user_id=user_id, seed_dates=["2026-06-26"])
+    """달성 가능한 목표(현실적 절감 상한 이내)면 on_track=True를 반환한다."""
+    # 청구액 50,000원의 현실적 월 절감 상한은 50000 × 0.45 × 0.30 = 6,750원.
+    # 목표 절감액을 그 이내(5,000원)로 두어 달성 가능한 경로를 검증한다.
+    achievable_profile = {
+        **sample_profile,
+        "energy_profile": {**sample_profile["energy_profile"], "monthly_goal_bill": 45000},
+    }
+    client = make_client(fake_db, achievable_profile, fake_recommendation_repository, user_id=user_id, seed_dates=["2026-06-26"])
     plan, _ = create_plan_and_get_first_action(client, user_id)
     for action in plan["actions"]:
         complete_action(client, user_id, action)
@@ -777,11 +784,72 @@ def test_savings_summary_goal_on_track(
     goal = response.json()["data"]["goal"]
     assert response.status_code == 200
     assert goal["monthly_electricity_bill"] == 50000
-    assert goal["monthly_goal_bill"] == 42000
-    assert goal["required_monthly_saving_krw"] == 8000
-    # projected = total_saving_krw * 30 (all actions completed in one day)
-    assert goal["current_projected_saving_krw"] > 0
+    assert goal["monthly_goal_bill"] == 45000
+    assert goal["required_monthly_saving_krw"] == 5000
+    # 월 절감 예측은 청구액 기반 현실 상한(6,750원)과 청구액 자체를 넘지 않는다.
+    assert 0 < goal["current_projected_saving_krw"] <= 6750
+    assert goal["current_projected_saving_krw"] <= goal["monthly_electricity_bill"]
     assert goal["on_track"] is True
+
+
+def test_savings_summary_monthly_projection_capped_by_bill(
+    fake_db: FakeDb,
+    fake_recommendation_repository: FakeRecommendationRepository,
+    sample_profile: Dict[str, Any],
+    user_id: uuid.UUID,
+) -> None:
+    """월 절감 예측은 실제 청구액 기반 현실 상한을 넘지 않는다.
+
+    예전에는 '하루 절감액 × 30'을 그대로 노출해, 5만원 청구액에서도
+    4만원 이상 절감처럼 비현실적인 값이 나왔다. 이제는 청구액의 약 13.5%
+    (= 0.45 × 0.30)로 제한되고, 목표가 그보다 크면 정직하게 on_track=False가 된다.
+    """
+    client = make_client(fake_db, sample_profile, fake_recommendation_repository, user_id=user_id, seed_dates=["2026-06-26"])
+    plan, _ = create_plan_and_get_first_action(client, user_id)
+    for action in plan["actions"]:
+        complete_action(client, user_id, action)
+
+    response = client.get(
+        "/api/v1/savings/summary",
+        headers={"X-User-Id": str(user_id)},
+        params={"period": "today", "date": "2026-06-26"},
+    )
+
+    data = response.json()["data"]
+    goal = data["goal"]
+    bill = goal["monthly_electricity_bill"]  # 50000
+    realistic_ceiling = round(bill * 0.45 * 0.30)  # 6750
+    assert data["monthly_projected_saving_krw"] <= realistic_ceiling
+    assert data["monthly_projected_saving_krw"] <= bill
+    # 목표 절감액(8,000원/월)이 현실 상한(6,750원)보다 커서 달성 불가로 표시된다.
+    assert goal["required_monthly_saving_krw"] == 8000
+    assert goal["on_track"] is False
+
+
+def test_daily_plan_total_saving_is_bill_anchored(
+    fake_db: FakeDb,
+    fake_recommendation_repository: FakeRecommendationRepository,
+    sample_profile: Dict[str, Any],
+    user_id: uuid.UUID,
+) -> None:
+    """하루 절감 합계는 청구액 기반 일일 상한 수준으로 제한된다(과대 합산 방지)."""
+    client = make_client(fake_db, sample_profile, fake_recommendation_repository, user_id=user_id, seed_dates=["2026-06-26"])
+
+    response = client.post(
+        "/api/v1/recommendations/daily",
+        headers={"X-User-Id": str(user_id)},
+        json={"date": "2026-06-26", "force_regenerate": False},
+    )
+
+    assert response.status_code == 201
+    summary = response.json()["data"]["daily_summary"]
+    bill = 50000
+    daily_ceiling = round(bill / 30 * 0.45 * 0.30)  # ≈ 225
+    monthly_ceiling = round(bill * 0.45 * 0.30)  # 6750
+    # 예전 모델은 하루 1,000원 이상으로 부풀려졌다. 이제 현실 상한 근처로 캡.
+    assert 0 < summary["total_estimated_saving_krw"] <= daily_ceiling + 5
+    assert summary["monthly_estimated_saving_krw"] <= monthly_ceiling
+    assert summary["monthly_estimated_saving_krw"] <= bill
 
 
 def test_internal_job_without_token_fails(

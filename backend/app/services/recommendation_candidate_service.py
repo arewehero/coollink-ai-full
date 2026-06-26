@@ -6,7 +6,9 @@ user scores, weather conditions, and lifestyle type.
 Key responsibilities:
 - Build action candidates with calculated savings (CalculationService)
 - Filter out AC-off actions during heatwave (>=35°C)
-- Enforce min 3, max 10 candidates per plan
+- Enforce min 3, max 5 candidates per plan
+- Scale action savings so the daily total stays within a realistic,
+  bill-anchored ceiling (no inflated numbers)
 - Sort by priority_score descending
 - Assign action_type, difficulty, priority_score
 
@@ -29,6 +31,7 @@ from app.services.calculation_service import (
     calculate_energy_kwh,
     calculate_saving_krw,
     estimate_ac_power_watt,
+    max_daily_behavioral_saving_krw,
     temperature_coefficient,
 )
 
@@ -38,7 +41,9 @@ from app.services.calculation_service import (
 
 HEATWAVE_THRESHOLD: float = 35.0
 MIN_CANDIDATES: int = 3
-MAX_CANDIDATES: int = 10
+# 하루에 추천하는 행동 개수 상한. 10개는 실천 부담이 크고 절감액이 과대 합산되어
+# 5개로 축소한다(핵심 행동 위주, 우선순위 상위만 노출).
+MAX_CANDIDATES: int = 5
 
 # Action types that involve turning off AC (excluded during heatwave)
 AC_OFF_ACTION_TYPES: set[str] = {
@@ -346,6 +351,7 @@ class RecommendationCandidateService:
         has_fan: bool = True,
         ac_type: str = "벽걸이",
         temperature_setting: float = 26.0,
+        monthly_electricity_bill: Optional[int] = None,
     ) -> List[ActionCandidate]:
         """Build filtered and scored action candidates.
 
@@ -360,10 +366,14 @@ class RecommendationCandidateService:
             has_fan: Whether user has a fan
             ac_type: AC type ("없음", "벽걸이", "스탠드", "둘 다")
             temperature_setting: Current AC temperature setting (°C)
+            monthly_electricity_bill: User's actual monthly bill (원). When given,
+                action savings are scaled so the daily total never exceeds a
+                realistic, bill-anchored ceiling. When omitted (e.g. unit tests),
+                raw physics-based estimates are returned unchanged.
 
         Returns:
             List of ActionCandidate sorted by priority_score descending,
-            with min 3 and max 10 items.
+            with min 3 and max 5 items.
         """
         # Determine if heatwave condition exists
         is_heatwave = self._detect_heatwave(weather)
@@ -421,6 +431,11 @@ class RecommendationCandidateService:
                 is_heatwave=is_heatwave,
             )
 
+        # Scale savings so the daily total stays within a realistic ceiling
+        # derived from the user's actual monthly bill (prevents inflated numbers
+        # such as "save 1,500원/day on a 30,000원/month bill").
+        candidates = self._apply_bill_anchored_cap(candidates, monthly_electricity_bill)
+
         # Assign sort_order based on final position
         for idx, candidate in enumerate(candidates, start=1):
             candidate.sort_order = idx
@@ -450,6 +465,7 @@ class RecommendationCandidateService:
         has_fan = energy.get("has_fan", True)
         ac_type = energy.get("ac_type", "벽걸이")
         temperature_setting = energy.get("current_temperature_setting", 26.0)
+        monthly_electricity_bill = energy.get("monthly_electricity_bill")
 
         # Determine lifestyle_type from profile or default
         lifestyle_type = lifestyle.get("primary_type", "불규칙형")
@@ -464,11 +480,49 @@ class RecommendationCandidateService:
             has_fan=has_fan,
             ac_type=ac_type,
             temperature_setting=temperature_setting,
+            monthly_electricity_bill=monthly_electricity_bill,
         )
 
     # ---------------------------------------------------------------------------
     # Private helpers
     # ---------------------------------------------------------------------------
+
+    def _apply_bill_anchored_cap(
+        self,
+        candidates: List[ActionCandidate],
+        monthly_electricity_bill: Optional[int],
+    ) -> List[ActionCandidate]:
+        """Scale candidate savings so the daily total fits a realistic ceiling.
+
+        The ceiling is derived from the user's actual monthly bill
+        (see ``calculation_service.max_daily_behavioral_saving_krw``). If the raw
+        physics-based total exceeds the ceiling, every candidate's KRW / kWh / CO₂
+        is scaled by the same factor. This keeps the relative ordering and the
+        ``saving_krw ≈ kWh × unit_price`` relationship intact while preventing
+        inflated totals. When no bill is provided, candidates are returned as-is.
+        """
+        if not monthly_electricity_bill or monthly_electricity_bill <= 0 or not candidates:
+            return candidates
+
+        daily_ceiling = max_daily_behavioral_saving_krw(monthly_electricity_bill)
+        if daily_ceiling <= 0:
+            return candidates
+
+        raw_total = sum(c.estimated_saving_krw for c in candidates)
+        if raw_total <= daily_ceiling:
+            # Already within a realistic range; nothing to scale down.
+            return candidates
+
+        factor = daily_ceiling / raw_total
+        for candidate in candidates:
+            candidate.estimated_saving_krw = int(round(candidate.estimated_saving_krw * factor))
+            candidate.estimated_energy_saving_kwh = round(
+                candidate.estimated_energy_saving_kwh * factor, 3
+            )
+            candidate.estimated_co2_reduction_kg = round(
+                candidate.estimated_co2_reduction_kg * factor, 3
+            )
+        return candidates
 
     def _detect_heatwave(self, weather: Dict[str, Any]) -> bool:
         """Check if ANY time block has temperature >= 35°C (heatwave condition)."""

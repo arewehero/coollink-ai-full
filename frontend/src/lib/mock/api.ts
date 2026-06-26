@@ -77,6 +77,32 @@ function setMockProfileSaved(): void {
 
 const completion: Record<string, boolean> = {};
 
+/* ── 현실적 절감 상한 (백엔드 calculation_service와 동일 가정) ──
+ * 냉방은 여름철 요금의 약 45%, 그 중 행동으로 줄일 수 있는 비율은 최대 30%.
+ * 따라서 한 달 절감액은 청구액의 약 13.5%를 넘지 않는다. */
+const MOCK_MONTHLY_BILL = 50000;
+const COOLING_BILL_SHARE = 0.45;
+const MAX_COOLING_REDUCTION_RATE = 0.3;
+const DAYS_PER_MONTH = 30;
+
+function realisticMonthlyCeiling(bill: number): number {
+  if (!bill || bill <= 0) return 0;
+  return Math.round(
+    Math.min(bill * COOLING_BILL_SHARE * MAX_COOLING_REDUCTION_RATE, bill),
+  );
+}
+
+function maxDailyBehavioralSaving(bill: number): number {
+  if (!bill || bill <= 0) return 0;
+  return (bill / DAYS_PER_MONTH) * COOLING_BILL_SHARE * MAX_COOLING_REDUCTION_RATE;
+}
+
+function capMonthlySaving(projected: number, bill: number): number {
+  const safe = Math.max(0, Math.round(projected));
+  if (!bill || bill <= 0) return safe;
+  return Math.min(safe, realisticMonthlyCeiling(bill));
+}
+
 const BASE_ACTIONS: Omit<RecommendationAction, "is_completed">[] = [
   {
     action_id: "mock-action-001",
@@ -133,8 +159,20 @@ const BASE_ACTIONS: Omit<RecommendationAction, "is_completed">[] = [
 ];
 
 function buildActions(): RecommendationAction[] {
+  // 백엔드와 동일하게, raw 합계가 하루 현실 상한을 넘으면 동일 비율로 축소한다.
+  const rawTotal = BASE_ACTIONS.reduce(
+    (acc, a) => acc + a.estimated_saving_krw,
+    0,
+  );
+  const dailyCeiling = maxDailyBehavioralSaving(MOCK_MONTHLY_BILL);
+  const factor =
+    dailyCeiling > 0 && rawTotal > dailyCeiling ? dailyCeiling / rawTotal : 1;
+  const round3 = (n: number) => Math.round(n * 1000) / 1000;
   return BASE_ACTIONS.map((a) => ({
     ...a,
+    estimated_saving_krw: Math.round(a.estimated_saving_krw * factor),
+    estimated_energy_saving_kwh: round3(a.estimated_energy_saving_kwh * factor),
+    estimated_co2_reduction_kg: round3(a.estimated_co2_reduction_kg * factor),
     is_completed: completion[a.action_id] ?? false,
   }));
 }
@@ -164,7 +202,10 @@ function buildPlan(): DailyPlan {
     },
     daily_summary: {
       total_estimated_saving_krw: possibleSaving,
-      monthly_estimated_saving_krw: possibleSaving * 30,
+      monthly_estimated_saving_krw: capMonthlySaving(
+        possibleSaving * DAYS_PER_MONTH,
+        MOCK_MONTHLY_BILL,
+      ),
       total_energy_saving_kwh: sumBy(actions, "estimated_energy_saving_kwh"),
       total_co2_reduction_kg: sumBy(actions, "estimated_co2_reduction_kg"),
       cheer_message: `오늘 추천 행동을 모두 실천하면 약 ${possibleSaving.toLocaleString(
@@ -183,8 +224,13 @@ function buildSummary(period: string = "today"): SavingsSummary {
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const savedBase = sumBy(completed, "estimated_saving_krw");
   const possibleBase = sumBy(actions, "estimated_saving_krw");
-  const monthlyProjected = Math.round(savedBase * 30);
-  const requiredMonthly = 10000;
+  const monthlyProjected = capMonthlySaving(
+    savedBase * DAYS_PER_MONTH,
+    MOCK_MONTHLY_BILL,
+  );
+  // 목표는 현실적 절감 상한(50,000 × 13.5% = 6,750원) 이내로 설정한다.
+  const goalBill = 45000;
+  const requiredMonthly = MOCK_MONTHLY_BILL - goalBill;
   const today = getTodayKst();
   const label = period === "week" ? "이번 주" : period === "month" ? "이번 달" : "오늘";
   return {
@@ -209,8 +255,8 @@ function buildSummary(period: string = "today"): SavingsSummary {
     ),
     monthly_projected_saving_krw: monthlyProjected,
     goal: {
-      monthly_electricity_bill: 50000,
-      monthly_goal_bill: 40000,
+      monthly_electricity_bill: MOCK_MONTHLY_BILL,
+      monthly_goal_bill: goalBill,
       required_monthly_saving_krw: requiredMonthly,
       current_projected_saving_krw: monthlyProjected,
       on_track: monthlyProjected >= requiredMonthly,
@@ -228,7 +274,7 @@ function buildToggleResponse(
 ): ToggleActionResponse {
   const actions = buildActions();
   const completed = actions.filter((a) => a.is_completed);
-  const target = BASE_ACTIONS.find((a) => a.action_id === actionId);
+  const target = actions.find((a) => a.action_id === actionId);
   const savedKrw = sumBy(completed, "estimated_saving_krw");
   const possibleSaving = sumBy(actions, "estimated_saving_krw");
   const rate = possibleSaving > 0 ? savedKrw / possibleSaving : 0;
@@ -319,7 +365,7 @@ const MOCK_PROFILE: Profile = {
   },
   energy_profile: {
     monthly_electricity_bill: 50000,
-    monthly_goal_bill: 40000,
+    monthly_goal_bill: 45000,
     comfort_preference: "보통",
     ac_type: "벽걸이",
     has_fan: true,

@@ -29,6 +29,7 @@ from app.schemas.recommendation import (
 )
 from app.services.ai_client import AIClient, FallbackAIClient
 from app.services.ai_logging import record_ai_generation_log
+from app.services import calculation_service as calc
 from app.services.external_adapters import MockScoringAdapter, MockWeatherAdapter
 from app.services.recommendation_candidate_service import RecommendationCandidate, RecommendationCandidateService
 
@@ -177,8 +178,13 @@ class DailyRecommendationService:
         total_energy_saving_kwh = sum(candidate.estimated_energy_saving_kwh for candidate in candidates)
         total_co2_reduction_kg = sum(candidate.estimated_co2_reduction_kg for candidate in candidates)
 
-        # Monthly projection (Req 6.7): daily total × 30
-        monthly_estimated_saving_krw = total_saving_krw * 30
+        # Monthly projection (Req 6.7): daily total × 30, capped at a realistic
+        # bill-anchored ceiling so the projection can never exceed (a fraction of)
+        # the user's actual monthly bill.
+        monthly_bill = (profile.get("energy_profile") or {}).get("monthly_electricity_bill")
+        monthly_estimated_saving_krw = calc.cap_monthly_saving_krw(
+            total_saving_krw * calc.DAYS_PER_MONTH, monthly_bill
+        )
 
         # Determine plan status
         plan_status = "fallback" if used_fallback else "generated"

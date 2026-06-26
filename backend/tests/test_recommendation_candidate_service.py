@@ -359,3 +359,64 @@ class TestCalculationParameters:
         total_low = sum(c.estimated_saving_krw for c in low_power)
         total_high = sum(c.estimated_saving_krw for c in high_power)
         assert total_high > total_low
+
+
+class TestBillAnchoredScaling:
+    """청구액이 주어지면 하루 절감 합계가 현실적 상한 이내로 스케일된다."""
+
+    def test_savings_capped_to_daily_ceiling(
+        self, service: RecommendationCandidateService, normal_scores: dict, normal_weather: dict
+    ) -> None:
+        # 청구액 30,000원 → 하루 절감 상한 ≈ 30000/30 × 0.45 × 0.30 = 135원
+        candidates = service.build_candidates(
+            scores=normal_scores,
+            weather=normal_weather,
+            lifestyle_type="재택 체류형",
+            monthly_electricity_bill=30000,
+        )
+        total = sum(c.estimated_saving_krw for c in candidates)
+        assert total > 0
+        assert total <= 140  # 135원 + 정수 반올림 여유
+
+    def test_bill_reduces_total_versus_no_bill(
+        self, service: RecommendationCandidateService, normal_scores: dict, normal_weather: dict
+    ) -> None:
+        with_bill = service.build_candidates(
+            scores=normal_scores,
+            weather=normal_weather,
+            lifestyle_type="재택 체류형",
+            monthly_electricity_bill=30000,
+        )
+        without_bill = service.build_candidates(
+            scores=normal_scores,
+            weather=normal_weather,
+            lifestyle_type="재택 체류형",
+        )
+        assert sum(c.estimated_saving_krw for c in with_bill) < sum(
+            c.estimated_saving_krw for c in without_bill
+        )
+
+    def test_scaling_preserves_priority_order(
+        self, service: RecommendationCandidateService, normal_scores: dict, normal_weather: dict
+    ) -> None:
+        candidates = service.build_candidates(
+            scores=normal_scores,
+            weather=normal_weather,
+            lifestyle_type="재택 체류형",
+            monthly_electricity_bill=30000,
+        )
+        priorities = [c.priority_score for c in candidates]
+        assert priorities == sorted(priorities, reverse=True)
+
+    def test_high_bill_may_not_scale(
+        self, service: RecommendationCandidateService, normal_scores: dict, normal_weather: dict
+    ) -> None:
+        # 청구액이 매우 크면 raw 합계가 상한 이내라 스케일이 일어나지 않을 수 있다.
+        candidates = service.build_candidates(
+            scores=normal_scores,
+            weather=normal_weather,
+            lifestyle_type="재택 체류형",
+            monthly_electricity_bill=2_000_000,
+        )
+        total = sum(c.estimated_saving_krw for c in candidates)
+        assert total > 0

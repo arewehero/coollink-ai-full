@@ -12,6 +12,7 @@ from app.core.errors import ApiException
 from app.core.time import today_kst
 from app.repositories.profile_repository import ProfileRepository
 from app.repositories.recommendation_repository import RecommendationRepository
+from app.services import calculation_service as calc
 from app.schemas.recommendation import (
     SavingsCalendarDayResponse,
     SavingsCalendarMonthlyTotalResponse,
@@ -48,13 +49,18 @@ class SavingSummaryService:
             period_end=period_end,
         )
         totals = aggregate_actions(actions)
-        monthly_projected = project_monthly_saving(
+        profile = self.profile_repository.get_profile(db, user_id)
+        monthly_bill = None
+        if profile:
+            monthly_bill = (profile.get("energy_profile") or {}).get("monthly_electricity_bill")
+        raw_monthly_projected = project_monthly_saving(
             total_saving_krw=totals["total_saving_krw"],
             period_start=period_start,
             period_end=period_end,
             reference_date=resolved_date,
         )
-        profile = self.profile_repository.get_profile(db, user_id)
+        # 청구액 기반 현실 상한으로 캡 (예: 3만원 청구액에 46,000원 절감 예측 방지)
+        monthly_projected = calc.cap_monthly_saving_krw(raw_monthly_projected, monthly_bill)
         goal = build_goal(profile, monthly_projected)
 
         return SavingsSummaryResponse(
