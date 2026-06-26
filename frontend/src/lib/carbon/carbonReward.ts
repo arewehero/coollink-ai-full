@@ -9,14 +9,31 @@
  */
 import { getTodayKst } from "@/lib/format/date";
 import { addTickets } from "@/lib/gacha/store";
+import { getStoredUserId } from "@/lib/storage/user";
 import { buildCarbonProgress } from "./carbonProgress";
 
 /** CO₂ 1kg당 뽑기권 1장 (기준값은 carbonProgress에 정의 — 재노출) */
 export { CO2_PER_TICKET_KG } from "./carbonProgress";
 
-const DEMO_BONUS_KEY = "coollink_co2_demo_bonus";
-const REWARDED_COUNT_KEY = "coollink_co2_rewarded_count";
-const REWARD_DATE_KEY = "coollink_co2_reward_date";
+// 기본(base) 키 — 로그인 계정별로 분리하기 위해 실제 저장 시 user id 접미사를 붙인다.
+const BASE_DEMO_BONUS_KEY = "coollink_co2_demo_bonus";
+const BASE_REWARDED_COUNT_KEY = "coollink_co2_rewarded_count";
+const BASE_REWARD_DATE_KEY = "coollink_co2_reward_date";
+
+const BASE_KEYS = [
+  BASE_DEMO_BONUS_KEY,
+  BASE_REWARDED_COUNT_KEY,
+  BASE_REWARD_DATE_KEY,
+];
+
+// 현재 로그인한 DB 사용자 id. null이면 비로그인(게스트) 범위.
+let currentUserId: string | null =
+  typeof window !== "undefined" ? getStoredUserId() : null;
+
+/** 계정별 분리 저장을 위해 기본 키에 user id 접미사를 붙인다(게스트는 접미사 없음). */
+function scopedKey(base: string): string {
+  return currentUserId ? `${base}::${currentUserId}` : base;
+}
 
 export type CarbonSnapshot = {
   demoBonusKg: number;
@@ -35,6 +52,9 @@ const listeners = new Set<() => void>();
 
 function readFromStorage(): CarbonSnapshot {
   if (typeof window === "undefined") return SERVER_SNAPSHOT;
+  const DEMO_BONUS_KEY = scopedKey(BASE_DEMO_BONUS_KEY);
+  const REWARDED_COUNT_KEY = scopedKey(BASE_REWARDED_COUNT_KEY);
+  const REWARD_DATE_KEY = scopedKey(BASE_REWARD_DATE_KEY);
   let demoBonusKg = 0;
   let rewardedCount = 0;
   let rewardDate: string | null = null;
@@ -61,6 +81,9 @@ function persist(next: CarbonSnapshot): void {
   cache = next;
   if (typeof window !== "undefined") {
     try {
+      const DEMO_BONUS_KEY = scopedKey(BASE_DEMO_BONUS_KEY);
+      const REWARDED_COUNT_KEY = scopedKey(BASE_REWARDED_COUNT_KEY);
+      const REWARD_DATE_KEY = scopedKey(BASE_REWARD_DATE_KEY);
       window.localStorage.setItem(DEMO_BONUS_KEY, String(next.demoBonusKg));
       window.localStorage.setItem(REWARDED_COUNT_KEY, String(next.rewardedCount));
       window.localStorage.setItem(REWARD_DATE_KEY, next.rewardDate ?? "");
@@ -122,12 +145,24 @@ export function grantCarbonTicketsForToday(totalKg: number): number {
   return grantCarbonTickets(totalKg, getTodayKst());
 }
 
-/** 시연용 초기화 — 탄소 보상 관련 키 제거 */
+/**
+ * 로그인 계정 전환 시 호출 — 저장 범위를 해당 user id로 바꾸고,
+ * 캐시를 새 계정 데이터로 다시 읽어 구독자(useSyncExternalStore)에게 알린다.
+ */
+export function setCarbonUser(userId: string | null): void {
+  const normalized = userId && userId.length > 0 ? userId : null;
+  if (normalized === currentUserId) return; // 동일 계정 — 변경 없음
+  currentUserId = normalized;
+  cache = readFromStorage();
+  listeners.forEach((listener) => listener());
+}
+
+/** 시연용 초기화 — (현재 계정의) 탄소 보상 관련 키 제거 */
 export function resetCarbonReward(): void {
   if (typeof window !== "undefined") {
     try {
-      [DEMO_BONUS_KEY, REWARDED_COUNT_KEY, REWARD_DATE_KEY].forEach((key) =>
-        window.localStorage.removeItem(key),
+      BASE_KEYS.forEach((base) =>
+        window.localStorage.removeItem(scopedKey(base)),
       );
     } catch {
       /* 접근 불가 무시 */

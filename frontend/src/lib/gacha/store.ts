@@ -7,21 +7,34 @@
  *
  * 추후 서버 연동 시 이 모듈만 교체하면 된다(읽기/쓰기 인터페이스 동일 유지).
  */
-const TICKETS_KEY = "coollink_gacha_tickets";
-const COLLECTION_KEY = "coollink_gacha_collection";
-const DRAW_COUNTS_KEY = "coollink_gacha_draw_counts";
-const ROULETTE_CLAIMED_KEY = "coollink_gacha_roulette_claimed";
-const ROULETTE_PRIZE_KEY = "coollink_gacha_roulette_prize";
+import { getStoredUserId } from "@/lib/storage/user";
+
+// 기본(base) 키 — 로그인 계정별로 분리하기 위해 실제 저장 시 user id 접미사를 붙인다.
+const BASE_TICKETS_KEY = "coollink_gacha_tickets";
+const BASE_COLLECTION_KEY = "coollink_gacha_collection";
+const BASE_DRAW_COUNTS_KEY = "coollink_gacha_draw_counts";
+const BASE_ROULETTE_CLAIMED_KEY = "coollink_gacha_roulette_claimed";
+const BASE_ROULETTE_PRIZE_KEY = "coollink_gacha_roulette_prize";
 
 const DEFAULT_TICKETS = 2;
 
-const STORAGE_KEYS = [
-  TICKETS_KEY,
-  COLLECTION_KEY,
-  DRAW_COUNTS_KEY,
-  ROULETTE_CLAIMED_KEY,
-  ROULETTE_PRIZE_KEY,
+const BASE_KEYS = [
+  BASE_TICKETS_KEY,
+  BASE_COLLECTION_KEY,
+  BASE_DRAW_COUNTS_KEY,
+  BASE_ROULETTE_CLAIMED_KEY,
+  BASE_ROULETTE_PRIZE_KEY,
 ];
+
+// 현재 로그인한 DB 사용자 id. null이면 비로그인(게스트) 범위.
+// 최초 로드 시 저장된 user id로 초기화해, 새로고침해도 같은 계정 데이터를 읽는다.
+let currentUserId: string | null =
+  typeof window !== "undefined" ? getStoredUserId() : null;
+
+/** 계정별 분리 저장을 위해 기본 키에 user id 접미사를 붙인다(게스트는 접미사 없음). */
+function scopedKey(base: string): string {
+  return currentUserId ? `${base}::${currentUserId}` : base;
+}
 
 export type GachaSnapshot = {
   tickets: number;
@@ -46,6 +59,11 @@ const listeners = new Set<() => void>();
 
 function readFromStorage(): GachaSnapshot {
   if (typeof window === "undefined") return SERVER_SNAPSHOT;
+  const TICKETS_KEY = scopedKey(BASE_TICKETS_KEY);
+  const COLLECTION_KEY = scopedKey(BASE_COLLECTION_KEY);
+  const DRAW_COUNTS_KEY = scopedKey(BASE_DRAW_COUNTS_KEY);
+  const ROULETTE_CLAIMED_KEY = scopedKey(BASE_ROULETTE_CLAIMED_KEY);
+  const ROULETTE_PRIZE_KEY = scopedKey(BASE_ROULETTE_PRIZE_KEY);
   let tickets = DEFAULT_TICKETS;
   let collection: string[] = [];
   const drawCounts: Record<string, number> = {};
@@ -92,6 +110,11 @@ function persist(next: GachaSnapshot): void {
   cache = next;
   if (typeof window !== "undefined") {
     try {
+      const TICKETS_KEY = scopedKey(BASE_TICKETS_KEY);
+      const COLLECTION_KEY = scopedKey(BASE_COLLECTION_KEY);
+      const DRAW_COUNTS_KEY = scopedKey(BASE_DRAW_COUNTS_KEY);
+      const ROULETTE_CLAIMED_KEY = scopedKey(BASE_ROULETTE_CLAIMED_KEY);
+      const ROULETTE_PRIZE_KEY = scopedKey(BASE_ROULETTE_PRIZE_KEY);
       window.localStorage.setItem(TICKETS_KEY, String(next.tickets));
       window.localStorage.setItem(
         COLLECTION_KEY,
@@ -179,11 +202,26 @@ export function claimRoulettePrize(prizeId: string): void {
   persist({ ...current, rouletteClaimed: true, roulettePrizeId: prizeId });
 }
 
-/** 시연용 전체 초기화 — 키 제거 후 기본값(뽑기권 2장)으로 복귀 */
+/**
+ * 로그인 계정 전환 시 호출 — 저장 범위를 해당 user id로 바꾸고,
+ * 캐시를 새 계정 데이터로 다시 읽어 구독자(useSyncExternalStore)에게 알린다.
+ * (로그아웃 시 userId=null → 게스트 범위)
+ */
+export function setGachaUser(userId: string | null): void {
+  const normalized = userId && userId.length > 0 ? userId : null;
+  if (normalized === currentUserId) return; // 동일 계정 — 변경 없음
+  currentUserId = normalized;
+  cache = readFromStorage();
+  listeners.forEach((listener) => listener());
+}
+
+/** 시연용 전체 초기화 — (현재 계정의) 키 제거 후 기본값(뽑기권 2장)으로 복귀 */
 export function resetGachaData(): void {
   if (typeof window !== "undefined") {
     try {
-      STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+      BASE_KEYS.forEach((base) =>
+        window.localStorage.removeItem(scopedKey(base)),
+      );
     } catch {
       /* 접근 불가 무시 */
     }

@@ -11,6 +11,8 @@ import {
 } from "react";
 import { getAccessToken } from "@/lib/storage/auth";
 import { clearStoredUserId, setStoredUserId } from "@/lib/storage/user";
+import { setGachaUser } from "@/lib/gacha/store";
+import { setCarbonUser } from "@/lib/carbon/carbonReward";
 import {
   getMe,
   loginWithGoogle as startGoogleLogin,
@@ -45,11 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const storeUser = useCallback((nextUser: AuthenticatedUser | null) => {
     if (!nextUser) {
+      // 로그아웃/세션 없음 → 게이미피케이션 저장소를 게스트 범위로 되돌린다.
+      setGachaUser(null);
+      setCarbonUser(null);
       setUser(null);
       return;
     }
     const userId = getAuthenticatedUserId(nextUser);
     if (userId) setStoredUserId(userId);
+    // 뽑기/탄소보상(캐릭터 컬렉션 포함) 저장소를 이 DB 계정 범위로 전환한다.
+    setGachaUser(userId);
+    setCarbonUser(userId);
     setUser(nextUser);
   }, []);
 
