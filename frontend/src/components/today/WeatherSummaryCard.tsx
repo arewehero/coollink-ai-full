@@ -91,7 +91,7 @@ export function WeatherSummaryCard({
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
           <Stat label="최고 기온" value={`${Math.round(maxTemp)}°C`} />
-          <Stat label="최고 체감" value={`${Math.round(hottest.feels_like)}°C`} />
+          <Stat label="최고 체감온도" value={`${Math.round(hottest.feels_like)}°C`} />
           <Stat label="습도" value={`${Math.round(hottest.humidity)}%`} />
         </div>
         {/* 시간대별 날씨 (새벽~밤) */}
