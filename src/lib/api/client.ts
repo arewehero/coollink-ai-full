@@ -8,6 +8,7 @@
  */
 import type { ApiResponse } from "@/types/api";
 import { MOCK_ENABLED, mockRequest } from "@/lib/mock/api";
+import { getAccessToken } from "@/lib/storage/auth";
 import { getStoredUserId } from "@/lib/storage/user";
 import { ApiError, normalizeApiError } from "./errors";
 
@@ -41,8 +42,10 @@ function buildUrl(path: string, query?: QueryParams): string {
 
 function buildHeaders(custom?: Record<string, string>): HeadersInit {
   const userId = getStoredUserId();
+  const accessToken = getAccessToken();
   return {
     "Content-Type": "application/json",
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...(userId ? { "X-User-Id": userId } : {}),
     ...custom,
   };

@@ -8,6 +8,7 @@ import { http, requestRaw } from "./client";
 import type {
   AnalysisScoresResponse,
   AnonymousUser,
+  AuthenticatedUser,
   CalculationEstimateBody,
   CalculationEstimateResponse,
   CreateAnonymousUserBody,
@@ -37,6 +38,11 @@ import type {
 
 /** /api/v1 접두어 */
 const V1 = "/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+
+function buildAbsoluteApiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
 
 /* ── Health (명세서 §8) ────────────────────────────────── */
 
@@ -70,6 +76,18 @@ export function createAnonymousUser(
 /** GET /api/v1/users/me — 내 사용자 조회 */
 export function getMe(signal?: AbortSignal): Promise<Me> {
   return http.get<Me>(`${V1}/users/me`, undefined, signal);
+}
+
+/** GET /api/v1/user/me — Google 로그인 사용자 조회 */
+export function getAuthenticatedMe(
+  signal?: AbortSignal,
+): Promise<AuthenticatedUser> {
+  return http.get<AuthenticatedUser>(`${V1}/user/me`, undefined, signal);
+}
+
+/** GET /api/v1/auth/google/login — Google OAuth 시작 URL */
+export function getGoogleOAuthLoginUrl(): string {
+  return buildAbsoluteApiUrl(`${V1}/auth/google/login`);
 }
 
 /* ── Profile (명세서 §8) ───────────────────────────────── */
@@ -249,6 +267,8 @@ export const api = {
   getAssumptions,
   createAnonymousUser,
   getMe,
+  getAuthenticatedMe,
+  getGoogleOAuthLoginUrl,
   saveProfile,
   getProfile,
   updateHomeEnvironment,

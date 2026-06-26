@@ -9,6 +9,7 @@
  */
 import type {
   AnonymousUser,
+  AuthenticatedUser,
   CalculationEstimateResponse,
   DailyPlan,
   HealthResponse,
@@ -454,6 +455,14 @@ export async function mockRequest<T>(
     return as<AnonymousUser>({ user_id: MOCK_USER_ID });
   if (path.endsWith("/users/me"))
     return as<Me>({ user_id: MOCK_USER_ID, has_profile: isMockProfileSaved() });
+  if (path.endsWith("/user/me"))
+    return as<AuthenticatedUser>({
+      id: "google-user-0001",
+      name: "혜성",
+      email: "hyesung@gmail.com",
+      profileImage: undefined,
+      has_profile: isMockProfileSaved(),
+    });
 
   // profile
   if (path.endsWith("/profile") && method === "PUT") {

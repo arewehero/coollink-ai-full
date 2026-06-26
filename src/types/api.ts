@@ -149,6 +149,18 @@ export type Me = {
   created_at?: string;
 };
 
+export type AuthenticatedUser = {
+  id?: number | string;
+  user_id?: string;
+  name?: string | null;
+  email?: string | null;
+  profileImage?: string | null;
+  profile_image?: string | null;
+  picture_url?: string | null;
+  avatar_url?: string | null;
+  has_profile?: boolean;
+};
+
 /* ──────────────────────────────────────────────────────────
  * 5. 메타 (명세서 §8) — 응답 형태 추론, 백엔드 확정 시 조정
  * ────────────────────────────────────────────────────────── */
