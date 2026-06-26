@@ -19,6 +19,18 @@ class Settings(BaseSettings):
     openweathermap_api_key: str = ""
     internal_job_token: str = ""
     cors_allowed_origins: str = "http://localhost:3000"
+    # Auth: Google OAuth + JWT (codex 통합)
+    secret_key: str = ""
+    frontend_url: str = "http://localhost:3000"
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
+    jwt_secret: str = ""
+    jwt_access_token_expire_minutes: int = Field(default=60 * 24, ge=1)
+
+    @property
+    def jwt_signing_secret(self) -> str:
+        return self.jwt_secret or self.secret_key
 
     model_config = SettingsConfigDict(
         env_file=".env",

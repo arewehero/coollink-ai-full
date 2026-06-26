@@ -9,6 +9,7 @@ import { getTodayKst } from "@/lib/format/date";
 import type {
   AnalysisScoresResponse,
   AnonymousUser,
+  AuthenticatedUser,
   CalculationEstimateBody,
   CalculationEstimateResponse,
   CreateAnonymousUserBody,
@@ -244,6 +245,21 @@ export function estimateCalculation(
   );
 }
 
+/* ── Auth (codex 통합: Google 로그인) ─────────────────── */
+
+/** GET /api/v1/user/me — 로그인 사용자 정보 (JWT Bearer) */
+export function getAuthenticatedMe(
+  signal?: AbortSignal,
+): Promise<AuthenticatedUser> {
+  return http.get<AuthenticatedUser>(`${V1}/user/me`, undefined, signal);
+}
+
+/** GET /api/v1/auth/google/login — Google OAuth 시작 URL (리다이렉트용 절대경로) */
+export function getGoogleOAuthLoginUrl(): string {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  return `${base}${V1}/auth/google/login`;
+}
+
 /**
  * 모든 엔드포인트를 모은 네임스페이스.
  * 명세서 §6.2, §22의 `api.createAnonymousUser`, `api.getDailyPlan`,
@@ -270,4 +286,6 @@ export const api = {
   getSavingsSummary,
   getSavingsCalendar,
   estimateCalculation,
+  getAuthenticatedMe,
+  getGoogleOAuthLoginUrl,
 } as const;

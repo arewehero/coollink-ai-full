@@ -12,6 +12,7 @@ import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { clearStoredUserId } from "@/lib/storage/user";
 import { clearStoredLocation } from "@/lib/storage/location";
 import { clearOnboardingDraft } from "@/lib/storage/onboardingDraft";
+import { useAuth } from "@/hooks/useAuth";
 
 const MENU = [
   {
@@ -57,6 +58,7 @@ function resetAllData() {
 export function SettingsHome() {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { user, isAuthenticated, loginWithGoogle, logout } = useAuth();
 
   const handleReset = () => {
     resetAllData();
@@ -68,6 +70,37 @@ export function SettingsHome() {
     <>
       <PageHeader title="설정" subtitle="프로필 · 계산 기준 · 초기화" />
       <section className="flex flex-1 flex-col gap-3 px-5 py-6">
+        {/* 로그인 / 로그아웃 (codex 통합: Google OAuth) */}
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          {isAuthenticated ? (
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold text-foreground">
+                  {user?.name || user?.email || "로그인됨"}
+                </span>
+                {user?.email ? (
+                  <span className="text-xs text-neutral">{user.email}</span>
+                ) : null}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="shrink-0 rounded-full border border-border px-4 py-2 text-sm font-semibold text-neutral"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={loginWithGoogle}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3 text-sm font-bold text-white"
+            >
+              Google로 로그인
+            </button>
+          )}
+        </div>
+
         <ul className="overflow-hidden rounded-2xl border border-border bg-surface">
           {MENU.map((item) => (
             <li key={item.href} className="border-b border-border last:border-b-0">

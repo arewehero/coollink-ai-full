@@ -13,6 +13,7 @@ import { DailySavingSummaryCard } from "@/components/today/DailySavingSummaryCar
 import { WeatherSummaryCard } from "@/components/today/WeatherSummaryCard";
 import { LifestyleAnalysisCard } from "@/components/today/LifestyleAnalysisCard";
 import { ProgressCard } from "@/components/today/ProgressCard";
+import { CarbonRewardCard } from "@/components/today/CarbonRewardCard";
 import { ActionTimeline } from "@/components/today/ActionTimeline";
 import { AssumptionNotice } from "@/components/today/AssumptionNotice";
 import { SkeletonCard } from "@/components/common/SkeletonCard";
@@ -50,6 +51,9 @@ export function TodayScreen() {
   }
 
   const plan = today.plan;
+  const todayCompletedCo2Kg = plan.actions
+    .filter((action) => action.is_completed)
+    .reduce((sum, action) => sum + (action.estimated_co2_reduction_kg ?? 0), 0);
 
   return (
     <>
@@ -107,6 +111,7 @@ export function TodayScreen() {
 
         <LifestyleAnalysisCard analysis={plan.lifestyle_analysis} />
         <ProgressCard progress={today.progress} />
+        <CarbonRewardCard todayCompletedCo2Kg={todayCompletedCo2Kg} />
         <ActionTimeline
           actions={plan.actions}
           onToggle={today.toggleAction}

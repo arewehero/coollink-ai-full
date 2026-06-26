@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.errors import ApiException, api_exception_handler
 from app.routers.ai import router as ai_router
 from app.routers.analysis import router as analysis_router
+from app.routers.auth import router as auth_router
 from app.routers.calculations import router as calculations_router
 from app.routers.internal import router as internal_router
 from app.routers.meta import router as meta_router
@@ -46,6 +47,7 @@ async def add_request_id(request: Request, call_next):
 app.add_exception_handler(ApiException, api_exception_handler)
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(analysis_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(calculations_router, prefix="/api/v1")
 app.include_router(internal_router, prefix="/api/v1")
 app.include_router(meta_router, prefix="/api/v1")

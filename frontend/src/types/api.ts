@@ -418,3 +418,26 @@ export type HealthResponse = {
   status: string;
   [key: string]: unknown;
 };
+
+
+/* ── Auth (codex 통합: Google 로그인) ─────────────────── */
+export type AuthenticatedUser = {
+  id?: number | string;
+  user_id?: string;
+  name?: string | null;
+  email?: string | null;
+  profileImage?: string | null;
+  profile_image?: string | null;
+  picture_url?: string | null;
+  avatar_url?: string | null;
+  has_profile?: boolean;
+  profileCompleted?: boolean;
+  profile_completed?: boolean;
+  region?: string | null;
+  householdSize?: number | null;
+  household_size?: number | null;
+  residenceType?: string | null;
+  residence_type?: string | null;
+  mainCoolingDevice?: string | null;
+  main_cooling_device?: string | null;
+};

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 /**
  * BottomNav — 하단 탭 (명세서 §5, §11.1)
  *
- * 탭은 `오늘 / 리포트 / 설정` 3개만 둔다.
+ * 탭: `오늘 / 리포트 / 뽑기 / 설정`.
  * 관리자·취약계층·건강정보·SMS/카카오 관련 탭은 만들지 않는다.
  */
 type Tab = {
@@ -47,6 +47,41 @@ const TABS: Tab[] = [
     ),
   },
   {
+    href: "/gacha",
+    label: "뽑기",
+    icon: (active) => (
+      <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden>
+        <rect
+          x="4"
+          y="9"
+          width="16"
+          height="11.5"
+          rx="1"
+          stroke="currentColor"
+          strokeWidth={active ? 2 : 1.6}
+          fill={active ? "currentColor" : "none"}
+          fillOpacity={active ? 0.12 : 0}
+        />
+        <rect
+          x="3"
+          y="6.5"
+          width="18"
+          height="3.5"
+          rx="0.8"
+          stroke="currentColor"
+          strokeWidth={active ? 2 : 1.6}
+        />
+        <path d="M12 6.5v14" stroke="currentColor" strokeWidth={active ? 2 : 1.6} />
+        <path
+          d="M12 6.5c-1-2.6-2.6-3.6-3.7-2.8-1 .7-.3 2.8 3.7 2.8Zm0 0c1-2.6 2.6-3.6 3.7-2.8 1 .7.3 2.8-3.7 2.8Z"
+          stroke="currentColor"
+          strokeWidth={active ? 2 : 1.6}
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     href: "/settings",
     label: "설정",
     icon: (active) => (
@@ -77,7 +112,7 @@ export function BottomNav() {
       aria-label="하단 메뉴"
       className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-surface"
     >
-      <ul className="grid grid-cols-3">
+      <ul className="grid grid-cols-4">
         {TABS.map((tab) => {
           const active =
             pathname === tab.href || pathname.startsWith(`${tab.href}/`);

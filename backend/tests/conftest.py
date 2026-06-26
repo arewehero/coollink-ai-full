@@ -7,3 +7,4 @@
 import os
 
 os.environ["AI_PROVIDER"] = "mock"
+os.environ["AI_TIMEOUT_SECONDS"] = "8"  # 테스트는 기본 timeout(8) 가정 — .env의 운영값(20)과 격리

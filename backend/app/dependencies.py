@@ -8,11 +8,17 @@ from fastapi import Depends, Header
 from app.core.config import settings
 from app.core.errors import ApiException, ErrorCode
 from app.core.security import get_current_user_id  # noqa: F401 — re-export for backward compat
+from sqlalchemy.orm import Session
+
 from app.db.session import get_db
+from app.models.user import User
 from app.repositories.profile_repository import ProfileRepository
 from app.repositories.recommendation_repository import RecommendationRepository
 from app.repositories.score_repository import ScoreRepository
+from app.repositories.user_repository import UserRepository
 from app.services.ai_client import AIClient, get_ai_client
+from app.services.google_oauth import GoogleOAuthClient
+from app.services.jwt_service import JWTError, decode_access_token
 from app.services.external_adapters import MockScoringAdapter, MockWeatherAdapter
 from app.services.internal_job_service import GenerateDailyRecommendationsJobService
 from app.services.recommendation_candidate_service import RecommendationCandidateService
@@ -95,3 +101,38 @@ def get_internal_job_service(
         recommendation_repository=recommendation_repository,
         daily_recommendation_service=daily_recommendation_service,
     )
+
+
+# ---------------------------------------------------------------------------
+# 소셜 로그인(Google) 인증 — codex 통합 (JWT Bearer)
+# ---------------------------------------------------------------------------
+
+
+def get_user_repository() -> UserRepository:
+    return UserRepository()
+
+
+def get_google_oauth_client() -> GoogleOAuthClient:
+    return GoogleOAuthClient()
+
+
+def get_current_user_for_auth(
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db),
+    user_repository: UserRepository = Depends(get_user_repository),
+) -> User:
+    """JWT Bearer 토큰으로 로그인 사용자를 인증한다(익명 X-User-Id 경로와 별개)."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise ApiException(status_code=401, code="INVALID_TOKEN", message="인증 토큰이 필요합니다.")
+
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        payload = decode_access_token(token)
+        user_id = UUID(str(payload["sub"]))
+    except (KeyError, ValueError, JWTError) as exc:
+        raise ApiException(status_code=401, code="INVALID_TOKEN", message="인증 토큰이 유효하지 않습니다.") from exc
+
+    user = user_repository.get_by_id(db, user_id)
+    if user is None or not user.is_active:
+        raise ApiException(status_code=401, code="INVALID_TOKEN", message="인증 토큰이 유효하지 않습니다.")
+    return user
