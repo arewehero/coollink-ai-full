@@ -2,16 +2,10 @@
 
 /**
  * SettingsHome — 설정 홈 (명세서 §10.15)
- * 프로필/위치/계산 기준 진입 + 데이터 초기화(확인 모달).
+ * 프로필/위치/계산 기준 진입.
  */
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
-import { ConfirmModal } from "@/components/common/ConfirmModal";
-import { clearStoredUserId } from "@/lib/storage/user";
-import { clearStoredLocation } from "@/lib/storage/location";
-import { clearOnboardingDraft } from "@/lib/storage/onboardingDraft";
 import { useAuth } from "@/hooks/useAuth";
 
 const MENU = [
@@ -43,32 +37,12 @@ const MENU = [
   },
 ];
 
-function resetAllData() {
-  clearStoredUserId();
-  clearStoredLocation();
-  clearOnboardingDraft();
-  try {
-    window.localStorage.removeItem("coollink_mock_profile");
-    window.localStorage.removeItem("coollink_seen_intro");
-  } catch {
-    /* 접근 불가 — 무시 */
-  }
-}
-
 export function SettingsHome() {
-  const router = useRouter();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const { user, isAuthenticated, loginWithGoogle, logout } = useAuth();
-
-  const handleReset = () => {
-    resetAllData();
-    setConfirmOpen(false);
-    router.replace("/");
-  };
 
   return (
     <>
-      <PageHeader title="설정" subtitle="프로필 · 계산 기준 · 초기화" />
+      <PageHeader title="설정" subtitle="프로필 · 계산 기준" />
       <section className="flex flex-1 flex-col gap-3 px-5 py-6">
         {/* 로그인 / 로그아웃 (codex 통합: Google OAuth) */}
         <div className="rounded-2xl border border-border bg-surface p-4">
@@ -122,24 +96,7 @@ export function SettingsHome() {
           ))}
         </ul>
 
-        <button
-          type="button"
-          onClick={() => setConfirmOpen(true)}
-          className="mt-2 rounded-2xl border border-border bg-surface px-4 py-4 text-left text-sm font-semibold text-danger"
-        >
-          데이터 초기화
-        </button>
       </section>
-
-      <ConfirmModal
-        open={confirmOpen}
-        title="데이터를 초기화할까요?"
-        message="이 기기에서 저장한 사용자 ID가 삭제돼요. 기존 절약 기록을 다시 불러올 수 없을 수 있습니다."
-        confirmLabel="초기화"
-        danger
-        onConfirm={handleReset}
-        onCancel={() => setConfirmOpen(false)}
-      />
     </>
   );
 }
