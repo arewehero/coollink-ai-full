@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 
 revision: str = "0001_recommendation_domain"
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = "0000_user_profile_domain"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

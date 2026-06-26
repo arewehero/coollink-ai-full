@@ -76,6 +76,27 @@ function requestGpsLocation(): Promise<{
   });
 }
 
+/** GPS 좌표 → 행정구역명 (BigDataCloud, 키 불필요). 실패 시 undefined. */
+async function reverseGeocode(
+  latitude: number,
+  longitude: number,
+): Promise<string | undefined> {
+  try {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=ko`,
+    );
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as {
+      city?: string;
+      principalSubdivision?: string;
+      locality?: string;
+    };
+    return data.city || data.principalSubdivision || data.locality || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** 에러 코드별 안내 (명세서 §14.1, §14.3) */
 function buildErrorInfo(code: ApiErrorCode | undefined, isNetwork: boolean): ErrorInfo {
   if (code === "WEATHER_FETCH_FAILED" || code === "WEATHER_CACHE_MISS") {
@@ -151,7 +172,8 @@ export function LocationFlow() {
     setPhase("locating");
     try {
       const coords = await requestGpsLocation();
-      await generatePlan({ type: "gps", ...coords });
+      const region_name = await reverseGeocode(coords.latitude, coords.longitude);
+      await generatePlan({ type: "gps", ...coords, region_name });
     } catch {
       // 권한 거부/실패 → 지역 직접 선택 (명세서 §10.6)
       setGpsDeniedHint(true);
