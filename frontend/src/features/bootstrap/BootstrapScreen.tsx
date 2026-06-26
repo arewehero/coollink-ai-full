@@ -4,8 +4,8 @@
  * BootstrapScreen — `/` 앱 첫 진입 Splash/Intro 화면 (명세서 §10.1)
  *
  * - 중앙: CoolLink AI 로고 + 소개 문구 + 핵심 가치
- * - 로그인 전: Google 회원가입/로그인 버튼
- * - 로그인 후: 계정 카드 + "오늘의 절약 루틴 시작하기" 버튼 → /today(홈)로 이동
+ * - 로그인 전: Google 로그인 버튼
+ * - 로그인 후: 프로필 상태에 따라 /today(홈) 또는 /onboarding으로 자동 이동
  * - 세션 확인 중: 스피너
  */
 import { useCallback, useEffect } from "react";
@@ -137,7 +137,7 @@ export function BootstrapScreen() {
   const auth = useAuth();
   const { status: authStatus, checkSession } = auth;
 
-  // 로그인 후: 프로필이 있으면 오늘 화면, 없으면(신규 가입) 온보딩부터 시작.
+  // 로그인 후: 프로필이 있으면 오늘 화면, 없으면 온보딩부터 시작.
   const handleStart = useCallback(() => {
     if (auth.user?.has_profile) {
       router.push("/today");
@@ -159,6 +159,12 @@ export function BootstrapScreen() {
       checkSession();
     }
   }, [authStatus, checkSession]);
+
+  useEffect(() => {
+    if (authStatus === "authenticated" && auth.user) {
+      handleStart();
+    }
+  }, [authStatus, auth.user, handleStart]);
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -226,28 +232,19 @@ export function BootstrapScreen() {
               <p className="text-sm text-neutral">로그인 상태 확인 중...</p>
             </div>
           ) : auth.isAuthenticated ? (
-            <>
-              <button
-                type="button"
-                onClick={handleStart}
-                className="w-full rounded-full bg-primary py-4 text-base font-bold text-white shadow-md shadow-primary/25 transition-colors hover:opacity-90 active:scale-[0.99]"
-              >
-                오늘의 절약 루틴 시작하기
-              </button>
-              <p className="mt-3 text-center text-xs text-neutral">
-                3분이면 오늘의 절약 루틴이 완성돼요.
-              </p>
-            </>
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col items-center gap-3 py-2"
+            >
+              <span
+                aria-hidden
+                className="h-7 w-7 animate-spin rounded-full border-2 border-primary/25 border-t-primary"
+              />
+              <p className="text-sm text-neutral">화면 이동 중...</p>
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={auth.loginWithGoogle}
-                className="flex w-full items-center justify-center gap-2 rounded-full border border-border bg-white py-4 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-primary-soft/30 active:scale-[0.99]"
-              >
-                <GoogleIcon />
-                Google로 회원가입
-              </button>
               <button
                 type="button"
                 onClick={auth.loginWithGoogle}
