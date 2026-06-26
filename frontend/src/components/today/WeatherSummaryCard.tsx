@@ -94,6 +94,29 @@ export function WeatherSummaryCard({
           <Stat label="최고 체감" value={`${Math.round(hottest.feels_like)}°C`} />
           <Stat label="습도" value={`${Math.round(hottest.humidity)}%`} />
         </div>
+        {/* 시간대별 날씨 (새벽~밤) */}
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          {blocks.map((b) => (
+            <div
+              key={b.time_range}
+              className="flex min-w-[58px] flex-col items-center gap-0.5 rounded-xl border border-border px-2 py-2"
+            >
+              <span className="text-xs text-neutral">{b.time_range}</span>
+              <span className="text-sm font-bold text-foreground">
+                {Math.round(b.temperature)}°
+              </span>
+              <span className="text-[10px] text-neutral">
+                체감 {Math.round(b.feels_like)}°
+              </span>
+              <span className="text-[10px] text-neutral">
+                습도 {Math.round(b.humidity)}%
+              </span>
+              {b.rain ? (
+                <span className="text-[10px] font-semibold text-primary">비</span>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </CardShell>
     </div>
   );

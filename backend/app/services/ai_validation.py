@@ -205,10 +205,53 @@ def _copy_template_for(candidate: CandidateActionInput) -> Tuple[str, str, str]:
             f"{time_prefix}에어컨 바람이 퍼지도록 선풍기를 함께 사용해보세요.",
             "공기 순환을 만들면 같은 설정에서도 더 시원하게 느낄 수 있습니다." + evidence_reason,
         )
+    if "timer" in action_type or "취침" in action_type:
+        return (
+            "취침 전 에어컨 타이머 맞추기",
+            f"{time_prefix}잠들기 전 에어컨이 1~2시간 뒤 꺼지도록 타이머를 설정하세요.",
+            "잠든 뒤 불필요한 냉방을 줄여 전력 사용을 아낄 수 있습니다." + evidence_reason,
+        )
+    if "laundry" in action_type:
+        return (
+            "더운 시간 피해 가전 사용하기",
+            f"{time_prefix}세탁·건조처럼 열이 나는 가전은 한낮을 피해 사용하세요.",
+            "실내 발열을 줄이면 냉방에 드는 전력도 함께 아낄 수 있습니다." + evidence_reason,
+        )
+    if "electronics" in action_type or "대기" in action_type:
+        return (
+            "대기전력 차단하기",
+            f"{time_prefix}사용하지 않는 전자기기의 플러그를 뽑아 대기전력을 줄이세요.",
+            "쓰지 않을 때의 대기전력만 줄여도 꾸준한 절전 효과가 있습니다." + evidence_reason,
+        )
+    if "outing" in action_type:
+        return (
+            "외출할 때 에어컨 끄기",
+            f"{time_prefix}집을 비울 때는 에어컨을 완전히 끄세요.",
+            "사람이 없는 동안의 냉방을 없애면 낭비되는 전력을 줄일 수 있습니다." + evidence_reason,
+        )
+    if "ac_off" in action_type:
+        return (
+            "선선할 때 에어컨 끄고 환기하기",
+            f"{time_prefix}기온이 내려가면 에어컨을 끄고 창문을 열어 환기하세요.",
+            "바깥이 시원해지는 시간에는 냉방을 멈춰도 쾌적함을 유지할 수 있습니다." + evidence_reason,
+        )
+    if "close" in action_type or "window" in action_type:
+        return (
+            "냉방 중 창문 닫기",
+            f"{time_prefix}에어컨을 켤 때는 창문을 닫아 찬 공기가 새지 않게 하세요.",
+            "냉기 손실을 막으면 같은 설정으로도 더 효율적으로 시원해집니다." + evidence_reason,
+        )
+    if "pre_cool" in action_type or "precool" in action_type:
+        return (
+            "귀가 전 미리 냉방하기",
+            f"{time_prefix}집에 도착하기 조금 전에 적정 온도로 미리 냉방하세요.",
+            "한 번에 강하게 트는 것보다 미리 적정 온도로 맞추면 전력 부담이 적습니다." + evidence_reason,
+        )
+    # 알 수 없는 유형이라도 구호성 문구('실천하기') 대신 실행 가능한 구체 동작을 제시
     return (
-        "추천 행동 실천하기",
-        f"{time_prefix}오늘의 추천 행동을 가능한 범위에서 실천해보세요.",
-        "사용자 입력과 날씨 조건을 바탕으로 실천 부담이 낮은 행동을 우선 제안했습니다." + evidence_reason,
+        "실내 적정 온도 유지하기",
+        f"{time_prefix}냉방은 26°C 안팎으로 두고 무리하지 않는 선에서 조절하세요.",
+        "적정 온도를 유지하면 쾌적함과 절전을 함께 챙길 수 있습니다." + evidence_reason,
     )
 
 
