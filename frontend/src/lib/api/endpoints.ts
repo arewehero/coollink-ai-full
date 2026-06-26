@@ -5,6 +5,7 @@
  * useDailyPlan 등)으로 감싸 사용한다. 이 파일은 순수 호출 함수만 제공한다.
  */
 import { http, requestRaw } from "./client";
+import { getTodayKst } from "@/lib/format/date";
 import type {
   AnalysisScoresResponse,
   AnonymousUser,
@@ -178,10 +179,15 @@ export function getDailyPlan(
 }
 
 /** POST /api/v1/recommendations/daily — 오늘 플랜 생성 */
-export function generateDailyPlan(
+export async function generateDailyPlan(
   body: GenerateDailyPlanBody = {},
   signal?: AbortSignal,
 ): Promise<DailyPlan> {
+  // 백엔드 추천 생성은 ScoreSnapshot + LifestyleAnalysis가 선행돼야 한다(PREREQUISITE_MISSING 방지).
+  // FE는 generateDailyPlan만 호출하므로, 여기서 점수계산·생활유형분석을 먼저 수행한다.
+  const date = body.date ?? getTodayKst();
+  await calculateScores({ date } as unknown as ProfilePayload, signal);
+  await analyzeLifestyle({ date } as unknown as ProfilePayload, signal);
   return http.post<DailyPlan>(
     `${V1}/recommendations/daily`,
     body,

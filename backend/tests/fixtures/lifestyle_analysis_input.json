@@ -1,0 +1,56 @@
+{
+  "user_id": "7f9c2f7a-0000-0000-0000-000000000000",
+  "date": "2026-06-26",
+  "profile": {
+    "energy_profile": {
+      "monthly_electricity_bill": 50000,
+      "monthly_goal_bill": 42000,
+      "comfort_preference": "절약 우선",
+      "ac_type": "벽걸이",
+      "has_fan": true,
+      "curtain_type": "암막",
+      "ac_power_watt": 1200,
+      "current_temperature_setting": 24,
+      "daily_ac_usage_hours": 6
+    },
+    "home_environment": {
+      "housing_type": "오피스텔",
+      "direction": "서향",
+      "floor_level": "최상층",
+      "building_age": "보통",
+      "insulation_level": "약함",
+      "window_size": "큼",
+      "ventilation_level": "보통",
+      "window_sealing": "틈새 있음"
+    },
+    "lifestyle": {
+      "main_activity_time": "야간 활동",
+      "daytime_home_stay": "거의 없음",
+      "sleep_time": "새벽",
+      "outdoor_activity": "보통",
+      "hot_time_home_stay": "가끔"
+    }
+  },
+  "scores": {
+    "morning_score": 0,
+    "daytime_score": 1,
+    "night_score": 5,
+    "irregular_score": 1,
+    "stay_home_score": 0,
+    "outing_score": 4,
+    "cooling_need_score": 1,
+    "saving_priority_score": 5,
+    "saving_opportunity_score": 5,
+    "heat_gain_score": 8,
+    "cooling_loss_score": 6,
+    "ventilation_score": 2,
+    "air_circulation_issue_score": 0
+  },
+  "weather": {
+    "max_temperature": 34,
+    "max_feels_like": 36,
+    "max_humidity": 72,
+    "heat_alert": true,
+    "hottest_time_range": "12:00~15:00"
+  }
+}

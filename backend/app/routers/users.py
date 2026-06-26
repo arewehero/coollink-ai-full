@@ -6,11 +6,14 @@ Requirements: 1.1, 1.2, 1.5
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
-from app.core.errors import api_meta_from_request
+from app.core.errors import ApiException, api_meta_from_request
 from app.db.session import get_db
+from app.dependencies import get_current_user_id
 from app.repositories.user_repository import UserRepository
 from app.schemas.common import ApiSuccessResponse
 from app.schemas.user import AnonymousUserResponse
@@ -46,5 +49,35 @@ def create_anonymous_user(
     )
     return ApiSuccessResponse(
         data=response_data,
+        meta=api_meta_from_request(request),
+    )
+
+
+@router.get(
+    "/me",
+    response_model=ApiSuccessResponse[AnonymousUserResponse],
+    summary="내 사용자 조회",
+    description="X-User-Id 헤더로 전달된 사용자의 정보를 조회합니다.",
+)
+def get_me(
+    request: Request,
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> ApiSuccessResponse[AnonymousUserResponse]:
+    """Return the current user identified by the X-User-Id header."""
+    user = user_repo.get_user_by_id(db, user_id)
+    if user is None:
+        raise ApiException(
+            status_code=404,
+            code="USER_NOT_FOUND",
+            message="사용자를 찾을 수 없습니다.",
+        )
+    return ApiSuccessResponse(
+        data=AnonymousUserResponse(
+            user_id=user.id,
+            user_type=user.user_type,
+            created_at=user.created_at,
+        ),
         meta=api_meta_from_request(request),
     )

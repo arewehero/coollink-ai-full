@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.errors import ApiException, api_exception_handler
@@ -15,6 +16,15 @@ from app.routers.weather import router as weather_router
 
 
 app = FastAPI(title=settings.app_name)
+
+# CORS (프론트엔드 연동) — CORS_ALLOWED_ORIGINS 설정 반영
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

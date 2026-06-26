@@ -1,0 +1,35 @@
+{
+  "user_id": "7f9c2f7a-0000-0000-0000-000000000000",
+  "date": "2026-06-26",
+  "lifestyle_analysis": {
+    "primary_type": "야간 활동형",
+    "secondary_type": "절약 우선형",
+    "confidence": 0.84,
+    "summary": "새벽 취침과 야간 활동이 많아요.",
+    "reason": "night_score가 가장 높고 절약 우선 성향이 강합니다."
+  },
+  "candidate_actions": [
+    {
+      "candidate_id": "cand_001",
+      "time_range": "외출 전",
+      "action_type": "shading_before_outing",
+      "difficulty": "쉬움",
+      "estimated_saving_krw": 150,
+      "estimated_energy_saving_kwh": 0.3,
+      "estimated_co2_reduction_kg": 0.14,
+      "evidence": ["낮 시간 집 체류 거의 없음", "서향", "최상층", "창문 큼"],
+      "backend_hint": "외출 전에 커튼을 닫아 오후 햇빛 유입을 줄이는 행동"
+    },
+    {
+      "candidate_id": "cand_002",
+      "time_range": "21:00~24:00",
+      "action_type": "timer_sleep",
+      "difficulty": "쉬움",
+      "estimated_saving_krw": 220,
+      "estimated_energy_saving_kwh": 0.44,
+      "estimated_co2_reduction_kg": 0.21,
+      "evidence": ["새벽 취침", "에어컨 보유"],
+      "backend_hint": "취침 전 에어컨 타이머를 설정하는 행동"
+    }
+  ]
+}

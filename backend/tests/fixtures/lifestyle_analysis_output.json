@@ -1,0 +1,7 @@
+{
+  "primary_type": "야간 활동형",
+  "secondary_type": "절약 우선형",
+  "confidence": 0.84,
+  "summary": "새벽 취침과 야간 활동이 많아, 낮에 집을 비우는 시간을 활용한 절약을 우선했어요.",
+  "reason": "night_score(5)가 가장 높고 outing_score(4)와 saving_priority_score(5)도 높아 야간 활동형을 기준으로 절약 우선형 성향을 함께 반영했습니다."
+}

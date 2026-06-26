@@ -106,6 +106,8 @@ def temperature_coefficient(temp_setting: float) -> float:
     - 24°C (24 <= T < 25): 1.08
     - 23°C 이하 (T < 24): 1.17 (에너지 증가)
     """
+    if temp_setting is None:
+        temp_setting = 26.0  # 기본 설정온도(명세 §5.3): current_temperature_setting 미입력 시
     if temp_setting >= 26:
         return 0.92
     elif temp_setting >= 25:

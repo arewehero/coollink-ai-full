@@ -12,8 +12,13 @@ class Settings(BaseSettings):
     ai_timeout_seconds: int = Field(default=8, ge=1)
     ai_log_payload: bool = False
     ai_prompt_version: str = "v0.3-mock"
+    # Upstage Solar (LLM provider)
+    upstage_api_key: str = ""
+    upstage_base_url: str = "https://api.upstage.ai/v1"
+    upstage_model: str = "solar-pro3"
     openweathermap_api_key: str = ""
     internal_job_token: str = ""
+    cors_allowed_origins: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(
         env_file=".env",

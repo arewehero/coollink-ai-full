@@ -299,6 +299,10 @@ def get_ai_client(provider: Optional[str] = None) -> AIClient:
         return FallbackAIClient()
     if selected_provider == "bedrock":
         return BedrockAIClient()
+    if selected_provider == "upstage":
+        from app.services.ai_upstage import UpstageAIClient
+
+        return UpstageAIClient()
 
     return FallbackAIClient()
 
