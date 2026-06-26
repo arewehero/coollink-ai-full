@@ -9,6 +9,7 @@ from app.routers.ai import router as ai_router
 from app.routers.analysis import router as analysis_router
 from app.routers.calculations import router as calculations_router
 from app.routers.internal import router as internal_router
+from app.routers.meta import router as meta_router
 from app.routers.profile import router as profile_router
 from app.routers.recommendations import router as recommendations_router
 from app.routers.savings import router as savings_router
@@ -47,6 +48,7 @@ app.include_router(ai_router, prefix="/api/v1")
 app.include_router(analysis_router, prefix="/api/v1")
 app.include_router(calculations_router, prefix="/api/v1")
 app.include_router(internal_router, prefix="/api/v1")
+app.include_router(meta_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(recommendations_router, prefix="/api/v1")
 app.include_router(savings_router, prefix="/api/v1")
